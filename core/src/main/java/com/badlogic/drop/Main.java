@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ScreenUtils;
@@ -27,6 +28,8 @@ public class Main extends ApplicationAdapter {
   Vector2 touchPos;
   Array<Sprite> dropSprites;
   float dropTimer;
+  Rectangle bucketRectangle;
+  Rectangle dropRectangle;
   Sprite bucketSprite; // a new Sprite variable declaration
 
 
@@ -44,6 +47,11 @@ public class Main extends ApplicationAdapter {
         bucketSprite.setSize(1, 1); // Define the size of the sprite
         touchPos = new Vector2();
         dropSprites = new Array<>();
+        bucketRectangle = new Rectangle();
+        dropRectangle = new Rectangle();
+        music.setLooping(true);
+        music.setVolume(.5f); // Volume is a value from 0f to 1f with 1f being the normal volume of the file
+        music.play();
     }
 
     @Override
@@ -100,9 +108,27 @@ public class Main extends ApplicationAdapter {
 
         float delta = Gdx.graphics.getDeltaTime(); // retrieve the current delta
 
-        // loop through each drop
-        for(Sprite dropSprite : dropSprites){
-            dropSprite.translateY(-2f * delta); // move the drop downward every frame
+        // Apply the bucket position and size to the bucketRectangle
+        bucketRectangle.set(bucketSprite.getX(), bucketSprite.getY(), bucketWidth, bucketHeight);
+
+        //Loop through the sprites backwards to prevent out of bounds errors
+        for (int i = dropSprites.size - 1; i >= 0; i--) {
+            Sprite dropSprite = dropSprites.get(i); // Get the sprite from the list
+            float dropWidth = dropSprite.getWidth();
+            float dropHeight = dropSprite.getHeight();
+
+            dropSprite.translateY(-2f * delta);
+
+            // Apply the drop position and size to the dropRectangle
+            dropRectangle.set(dropSprite.getX(), dropSprite.getY(), dropWidth, dropHeight);
+
+            // if the top of the drop goes below the bottom of the view, remove it
+            if(dropSprite.getY() < -dropHeight) dropSprites.removeIndex(i);
+            else if (bucketRectangle.overlaps(dropRectangle)) { // Check if the bucket overlaps the drop
+                dropSprites.removeIndex(i); // Remove the drop
+                // Drop sound will play when bucket collides with the drop not drop fall out of the level
+                dropSound.play(); // Play the sound
+            }
         }
 
         dropTimer += delta; // Adds the current delta to the timer
@@ -124,7 +150,7 @@ public class Main extends ApplicationAdapter {
          */
         spriteBatch.setProjectionMatrix(viewport.getCamera().combined);
         spriteBatch.begin();
-        /* Add lines to draw stuff here. It is important to order the begin and end lines appropriately.One should never draw from a SpriteBatch outside of a begin and an end.If one do, one will get an error message.*/
+        /* Add lines to draw stuff here. It is important to order the beginning and end lines appropriately.One should never draw from a SpriteBatch outside a beginning and an end. If one do, one will get an error message.*/
 
         //Store the worldWidth and worldHeight as local variables for brevity
         float worldWidth = viewport.getWorldWidth();
@@ -133,7 +159,7 @@ public class Main extends ApplicationAdapter {
         spriteBatch.draw(backgroundTexture, 0, 0, worldWidth , worldHeight); // draws the background
 
         // This code should now draw the bucket at the bottom of the screen in the lower left corner.
-        // spriteBatch.draw(bucketTexture, 0, 0, 1 , 1); // draws the bucket with width/height of 1 meter
+        // spriteBatch.draw(bucketTexture, 0, 0, 1, 1); // draws the bucket with width/height of 1 meter
         bucketSprite.draw(spriteBatch); // Sprites have their own method
 
         // draw each sprite
